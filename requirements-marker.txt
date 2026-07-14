@@ -1,0 +1,2 @@
+# Marker PDF converter (layout + figure extraction). Install CPU torch first — see deploy/ec2/finish-setup.sh
+marker-pdf==1.10.2
