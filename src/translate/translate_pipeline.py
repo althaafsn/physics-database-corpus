@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 
-from src.catalog import is_catalog_eligible, sync_catalog
+from src.catalog import is_catalog_eligible, record_content_locale, sync_catalog
 from src.llm.llm_client import DEFAULT_MODEL
 from src.llm.llm_progress import RepairProgressStore, format_usage_summary
 from src.llm.llm_translate import translate_record_with_progress
@@ -21,6 +21,8 @@ def select_records_for_translation(
 ) -> list[ProblemRecord]:
     selected: list[ProblemRecord] = []
     for record in records:
+        if record_content_locale(record) == "en":
+            continue
         if ids and record.id not in ids:
             continue
         if slugs and record.document_slug not in slugs:
