@@ -317,6 +317,7 @@ def chat_completion_json(
     retry_delay_s: float = DEFAULT_RETRY_DELAY_S,
     timeout_s: float | None = None,
     max_tokens: int | None = None,
+    reasoning_effort: str | None = None,
     log: LogFn | None = None,
 ) -> ChatCompletionResult | ChatCompletionFailure:
     """Call Netra chat API; return content + metrics or structured failure."""
@@ -340,6 +341,8 @@ def chat_completion_json(
             "min_p": 0,
             "chat_template_kwargs": {"enable_thinking": False},
         }
+    elif provider == "openrouter" and reasoning_effort:
+        kwargs["extra_body"] = {"reasoning": {"effort": reasoning_effort}}
     wall_start = time.perf_counter()
     attempts = 0
     last_error: Exception | None = None
@@ -362,6 +365,8 @@ def chat_completion_json(
                     response_format={"type": "json_object"},
                 )
             except Exception as json_exc:
+                if getattr(json_exc, "status_code", None) not in {400, 422}:
+                    raise
                 used_json_mode = False
                 if log:
                     log(f"  → json_object mode unavailable ({json_exc.__class__.__name__}), retrying plain")
@@ -407,7 +412,16 @@ def chat_completion_json(
                 log(f"  ✗ API error: {exc.__class__.__name__}: {exc}")
 
         if attempt + 1 < max_retries:
-            delay = retry_delay_s * attempt
+            delay = retry_delay_s * (attempt + 1)
+            body = getattr(last_error, "body", None)
+            headers = body.get("metadata", {}).get("headers", {}) if isinstance(body, dict) else {}
+            reset_ms = headers.get("X-RateLimit-Reset")
+            retry_after = headers.get("Retry-After")
+            if getattr(last_error, "status_code", None) == 429:
+                if reset_ms:
+                    delay = min(60.0, max(delay, float(reset_ms) / 1000 - time.time()))
+                if retry_after:
+                    delay = min(60.0, max(delay, float(retry_after)))
             if log:
                 log(f"  … retrying in {delay:.0f}s")
             time.sleep(delay)

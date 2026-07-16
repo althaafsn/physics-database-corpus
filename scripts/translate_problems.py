@@ -55,6 +55,7 @@ def main() -> int:
         help="Retranslate even if English fields already exist",
     )
     parser.add_argument("--limit", type=int, help="Translate at most N problems")
+    parser.add_argument("--workers", type=int, default=1, help="Concurrent API requests (default: 1)")
     parser.add_argument("--dry-run", action="store_true", help="List targets without calling LLM")
     parser.add_argument(
         "--no-sync-catalog",
@@ -105,6 +106,7 @@ def main() -> int:
             catalog_only=not args.all_gold,
             force=args.force,
             limit=args.limit,
+            workers=max(1, args.workers),
             model=args.model,
             timeout_s=args.timeout,
             max_tokens=args.max_tokens,

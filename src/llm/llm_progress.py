@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import threading
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, Literal
@@ -23,6 +24,7 @@ class RepairProgressStore:
     def __init__(self, path: Path, *, model: str) -> None:
         self.path = path
         self.model = model
+        self._lock = threading.Lock()
         self._data: dict[str, Any] = self._load()
 
     def _load(self) -> dict[str, Any]:
@@ -137,20 +139,21 @@ class RepairProgressStore:
         from_cache: bool = False,
         usage: dict[str, Any] | None = None,
     ) -> None:
-        entry: dict[str, Any] = {
-            "cache_key": cache_key,
-            "status": status,
-            "from_cache": from_cache,
-            "error": error,
-            "updated_at": datetime.now(UTC).isoformat(),
-        }
-        if usage is not None:
-            entry["usage"] = usage
-        self._data["records"][record_id] = entry
-        self._data["updated_at"] = datetime.now(UTC).isoformat()
-        self._data["stats"] = self._compute_stats(self._data["records"])
-        self._data["usage_totals"] = self._compute_usage_totals(self._data["records"])
-        self.save()
+        with self._lock:
+            entry: dict[str, Any] = {
+                "cache_key": cache_key,
+                "status": status,
+                "from_cache": from_cache,
+                "error": error,
+                "updated_at": datetime.now(UTC).isoformat(),
+            }
+            if usage is not None:
+                entry["usage"] = usage
+            self._data["records"][record_id] = entry
+            self._data["updated_at"] = datetime.now(UTC).isoformat()
+            self._data["stats"] = self._compute_stats(self._data["records"])
+            self._data["usage_totals"] = self._compute_usage_totals(self._data["records"])
+            self.save()
 
     def save(self) -> None:
         self.path.parent.mkdir(parents=True, exist_ok=True)

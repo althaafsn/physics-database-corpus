@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import fcntl
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import UTC, datetime
 
 from src.catalog import is_catalog_eligible, record_content_locale, sync_catalog
@@ -47,12 +49,19 @@ def run_translate_pipeline(
     model: str = DEFAULT_MODEL,
     timeout_s: float | None = None,
     max_tokens: int | None = None,
+    workers: int = 1,
     reset_progress: bool = False,
     dry_run: bool = False,
     sync_catalog_after: bool = True,
     log=print,
 ) -> dict[str, int | str | None]:
     paths.ensure_dirs()
+    lock_handle = (paths.llm_cache_dir / "translate.lock").open("w")
+    try:
+        fcntl.flock(lock_handle, fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except BlockingIOError as exc:
+        lock_handle.close()
+        raise RuntimeError("Translation pipeline is already running for this corpus") from exc
     gold_path = paths.gold_problems_path
     if not gold_path.is_file():
         raise FileNotFoundError(
@@ -104,21 +113,35 @@ def run_translate_pipeline(
         progress.reset()
 
     by_id = {rec.id: rec for rec in gold}
-    for index, record in enumerate(targets, start=1):
-        if log:
-            log(f"[{index}/{len(targets)}] Translating {record.id} …")
 
-        outcome = translate_record_with_progress(
-            record,
-            cache_root=paths.llm_cache_dir,
-            progress=progress,
-            model=model,
-            timeout_s=timeout_s,
-            max_tokens=max_tokens,
-            force=force,
-            log=log,
-        )
+    def translate_targets():
+        def translate(index: int, record: ProblemRecord):
+            if log:
+                log(f"[{index}/{len(targets)}] Translating {record.id} …")
+            return index, record, translate_record_with_progress(
+                record,
+                cache_root=paths.llm_cache_dir,
+                progress=progress,
+                model=model,
+                timeout_s=timeout_s,
+                max_tokens=max_tokens,
+                force=force,
+                log=log,
+            )
 
+        if workers <= 1:
+            for index, record in enumerate(targets, start=1):
+                yield translate(index, record)
+            return
+        with ThreadPoolExecutor(max_workers=workers) as executor:
+            futures = [
+                executor.submit(translate, index, record)
+                for index, record in enumerate(targets, start=1)
+            ]
+            for future in as_completed(futures):
+                yield future.result()
+
+    for _index, record, outcome in translate_targets():
         if outcome.skipped:
             summary["skipped"] = int(summary["skipped"]) + 1
             continue
@@ -158,4 +181,5 @@ def run_translate_pipeline(
 
     summary["finished_at"] = datetime.now(UTC).isoformat()
     summary["usage_summary"] = format_usage_summary(progress.usage_totals, model=model)
+    lock_handle.close()
     return summary

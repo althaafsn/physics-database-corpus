@@ -192,6 +192,35 @@ def accept_translation(
     return len(issues) == 0, issues
 
 
+def repair_translation_structure(
+    record: ProblemRecord, translated: TranslationResult
+) -> TranslationResult:
+    repaired = translated.model_copy(deep=True)
+    source_refs = extract_image_refs(record.body_md)
+    translated_refs = set(extract_image_refs(repaired.body_md))
+    for ref in source_refs:
+        marker = f"![]({ref})"
+        if record.body_md.rstrip().endswith(marker) and ref not in translated_refs:
+            repaired.body_md = f"{repaired.body_md.rstrip()}\n\n{marker}"
+
+    if record.body_md.count("$") % 2 == 0 and repaired.body_md.count("$") % 2:
+        unmatched: int | None = None
+        for index, char in enumerate(repaired.body_md):
+            if char == "$":
+                unmatched = index if unmatched is None else None
+        if unmatched is not None:
+            line_end = repaired.body_md.find("\n", unmatched)
+            if line_end < 0:
+                line_end = len(repaired.body_md)
+            insert_at = line_end
+            while insert_at > unmatched and repaired.body_md[insert_at - 1].isspace():
+                insert_at -= 1
+            if insert_at > unmatched and repaired.body_md[insert_at - 1] in ".,;:!?":
+                insert_at -= 1
+            repaired.body_md = repaired.body_md[:insert_at] + "$" + repaired.body_md[insert_at:]
+    return repaired
+
+
 def apply_translation_to_record(
     record: ProblemRecord, translated: TranslationResult, *, model: str
 ) -> ProblemRecord:
@@ -226,6 +255,7 @@ def translate_record(
         model=model,
         timeout_s=timeout_s,
         max_tokens=max_tokens,
+        reasoning_effort="none",
         log=log,
     )
     if isinstance(completion, ChatCompletionFailure):
@@ -299,6 +329,11 @@ def translate_record_with_progress(
             failure_detail=attempt.failure_detail,
             metrics=attempt.metrics,
         )
+
+    repaired = repair_translation_structure(record, attempt.result)
+    if repaired != attempt.result:
+        attempt.result = repaired
+        save_cached_translation(cache_root, record.id, key, repaired)
 
     ok, issues = accept_translation(record, attempt.result)
     if not ok:
