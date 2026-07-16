@@ -1,2 +1,0 @@
-# S3 / SQS ingest queue + Airflow trigger (control plane only; worker image installs separately)
-boto3>=1.34

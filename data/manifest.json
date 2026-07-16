@@ -1,0 +1,31 @@
+{
+  "counts": {
+    "problems": 667,
+    "rag_en": 667,
+    "rag_id": 644,
+    "relations": 2134,
+    "solutions": 506
+  },
+  "files": {
+    "problems.jsonl": {
+      "rows": 667
+    },
+    "rag.en.jsonl": {
+      "rows": 667
+    },
+    "rag.id.jsonl": {
+      "rows": 644
+    },
+    "relations.jsonl": {
+      "rows": 2134
+    },
+    "solutions.jsonl": {
+      "rows": 506
+    }
+  },
+  "languages": {
+    "en": "Native or accepted English problem text; solutions retain their detected language",
+    "id": "Indonesian problem text; solutions retain their detected language"
+  },
+  "schema_version": 1
+}

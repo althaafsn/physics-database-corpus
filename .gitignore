@@ -1,15 +1,8 @@
-__pycache__/
-*.pyc
-.pytest_cache/
-.venv/
 .env
 .env.*
-parsed/
-output/
-all_pdf/
-models/
 *.pdf
 *.db
 *.sqlite*
 *.pem
 *.key
+.DS_Store

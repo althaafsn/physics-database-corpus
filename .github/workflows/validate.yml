@@ -16,4 +16,69 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - run: python3 scripts/validate_dataset.py
+      - name: Validate JSONL, joins, and manifest
+        run: |
+          python3 - <<'PY'
+          import json
+          import re
+          from pathlib import Path
+
+          root = Path("data")
+          manifest = json.loads((root / "manifest.json").read_text(encoding="utf-8"))
+          forbidden = re.compile(
+              r"/(?:home|tmp)/|[A-Za-z]:\\\\Users\\\\|api[_-]?key",
+              re.IGNORECASE,
+          )
+          loaded = {}
+
+          for filename, metadata in manifest["files"].items():
+              path = root / filename
+              assert path.is_file(), f"missing {filename}"
+              rows = []
+              for number, line in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
+                  if not line.strip():
+                      continue
+                  assert not forbidden.search(line), f"private value in {filename}:{number}"
+                  rows.append(json.loads(line))
+              assert len(rows) == metadata["rows"], (
+                  filename,
+                  len(rows),
+                  metadata["rows"],
+              )
+              loaded[filename] = rows
+
+          counts = manifest["counts"]
+          expected = {
+              "problems": len(loaded["problems.jsonl"]),
+              "solutions": len(loaded["solutions.jsonl"]),
+              "relations": len(loaded["relations.jsonl"]),
+              "rag_id": len(loaded["rag.id.jsonl"]),
+              "rag_en": len(loaded["rag.en.jsonl"]),
+          }
+          assert counts == expected, (counts, expected)
+
+          problem_ids = [row["id"] for row in loaded["problems.jsonl"]]
+          assert len(problem_ids) == len(set(problem_ids)), "duplicate problem id"
+          problem_ids = set(problem_ids)
+
+          for solution in loaded["solutions.jsonl"]:
+              assert solution["problem_id"] in problem_ids
+              assert solution["solution_locale"] in {"id", "en"}
+
+          for relation in loaded["relations.jsonl"]:
+              assert relation["from_id"] in problem_ids
+              assert relation["to_id"] in problem_ids
+
+          for locale, filename in (("id", "rag.id.jsonl"), ("en", "rag.en.jsonl")):
+              ids = []
+              for row in loaded[filename]:
+                  assert row["id"] in problem_ids
+                  assert row["locale"] == locale
+                  assert bool(row["solutions"]) == row["has_solution"]
+                  ids.append(row["id"])
+              assert len(ids) == len(set(ids)), f"duplicate {locale} RAG id"
+
+          assert not Path("src").exists()
+          assert not Path("scripts").exists()
+          print(expected)
+          PY

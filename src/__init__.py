@@ -1,1 +1,0 @@
-"""Physics problem extraction pipeline."""

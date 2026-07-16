@@ -19,3 +19,9 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
+
+Scope clarification: this license applies only to repository-authored
+metadata, schemas, documentation, translations, and software transformations
+to the extent the copyright holder owns them. Third-party problem statements,
+diagrams, and worked solutions are excluded and remain subject to their
+respective owners' rights and terms.
