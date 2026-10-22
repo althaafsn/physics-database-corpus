@@ -12,12 +12,13 @@ or retrieval-augmented generation.
 
 | File | Rows | Use |
 | --- | ---: | --- |
-| [`data/problems.jsonl`](data/problems.jsonl) | 667 | Canonical parsed problems, original text, and accepted English translations |
-| [`data/solutions.jsonl`](data/solutions.jsonl) | 506 | Parsed worked solutions with explicit language and quality metadata |
-| [`data/relations.jsonl`](data/relations.jsonl) | 2,134 | Prerequisite, similarity, variant, and difficulty edges |
-| [`data/rag.id.jsonl`](data/rag.id.jsonl) | 644 | Indonesian problems joined to solutions and graph neighbors |
-| [`data/rag.en.jsonl`](data/rag.en.jsonl) | 667 | English problems joined to solutions and graph neighbors |
-| [`data/manifest.json`](data/manifest.json) | — | Machine-readable schema version and counts |
+| [`data/problems.jsonl`](data/problems.jsonl) | 572 | Cleaned current catalog problems and accepted translations |
+| [`data/solutions.jsonl`](data/solutions.jsonl) | 314 | Filtered parsed text solutions; explicitly unverified |
+| [`data/solution.images.jsonl`](data/solution.images.jsonl) | 28 | Reviewed source-crop metadata, attribution, and website image URLs |
+| [`data/relations.jsonl`](data/relations.jsonl) | 1,812 | Relations with current catalog endpoints |
+| [`data/rag.id.jsonl`](data/rag.id.jsonl) | 564 | Indonesian problem views joined to eligible text solutions |
+| [`data/rag.en.jsonl`](data/rag.en.jsonl) | 572 | Native or translated English problem views joined to eligible text solutions |
+| [`data/manifest.json`](data/manifest.json) | — | Schema version, counts, and quality exclusions |
 
 English problem rows contain native or accepted English text. Indonesian
 problem rows contain Indonesian text. Linked solutions keep their real
@@ -44,6 +45,10 @@ document = "\n\n".join(
 )
 print(record["id"], document[:500])
 ```
+
+Text solutions are labelled `parsed_unverified`. Reviewed source-image references
+are separate in `data/solution.images.jsonl`; they do not certify every derivation.
+The new unreviewed crop drafts are not included.
 
 Each RAG row already contains a stable problem ID, locale, Markdown problem
 text, subparts, metadata, available solutions, incoming relations, and outgoing

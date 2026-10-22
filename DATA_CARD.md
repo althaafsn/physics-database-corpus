@@ -7,13 +7,19 @@ This repository is the public data export behind
 tutor. It contains structured problem statements, worked solutions, and graph
 relations extracted from educational source documents.
 
-Current release:
+Current release (22 October 2026, schema version 2):
 
-- 667 canonical problems
-- 644 Indonesian problem views
-- 667 English problem views
-- 506 worked solutions
-- 2,134 problem-to-problem relations
+- 572 current reader-catalog problems
+- 564 Indonesian and 572 English problem views
+- 314 filtered parsed text solutions, marked `parsed_unverified`
+- 28 reviewed source-image solution metadata entries
+- 1,812 problem-to-problem relations
+
+The earlier raw-gold export included more records. This release follows the
+current reader catalog and excludes orphan solutions, parser-review records,
+unsafe text, and known source-label conflicts. Original inputs are preserved in
+the source workspace; exclusion is not a correction or mathematical certification.
+Counts and exclusion reasons are in `data/manifest.json`.
 
 ## Formats and schemas
 
@@ -37,6 +43,15 @@ Canonical parser records. Important fields include:
 Parsed solution records joined by `problem_id`. `solution_locale` states the
 solution text language. Alignment, formatting, method, flags, errors, and
 step-level fields describe parser output and quality.
+
+### `solution.images.jsonl`
+
+Source-crop metadata joined by `problem_id`, including author, source PDF
+basename/hash, review note, page/bounds, source solution number, and existing
+LabFisika image URLs. `source_crops_reviewed` means source identity and faithful
+cropping were checked. It does not mean every mathematical derivation is certified.
+Raw PDFs and image binaries are excluded. Newly extracted unreviewed drafts are
+not public in this release.
 
 ### `relations.jsonl`
 
@@ -75,8 +90,11 @@ credentials, caches, and generated image binaries are excluded.
 - Figure metadata can be present without the corresponding image binary.
 - English problem coverage is complete for this export; English solution
   coverage is not.
-- Records with flags or errors are retained so downstream users can filter
-  rather than receive silently discarded data.
+- Parser-review solutions and known mismatches are excluded; the manifest records
+  reasons. Remaining text is still parsed data, not fully reviewed mathematics.
+- Known promotional lines are removed from text, including original-text fields,
+  translations, parts, and steps. Native-text checks cannot prove that scanned
+  source content is clean or that every diagram/equation was extracted correctly.
 
 This dataset is unsuitable as an unquestioned answer key or sole evaluator of
 student correctness.

@@ -54,6 +54,7 @@ jobs:
               "relations": len(loaded["relations.jsonl"]),
               "rag_id": len(loaded["rag.id.jsonl"]),
               "rag_en": len(loaded["rag.en.jsonl"]),
+              "solution_images": len(loaded["solution.images.jsonl"]),
           }
           assert counts == expected, (counts, expected)
 
@@ -64,6 +65,15 @@ jobs:
           for solution in loaded["solutions.jsonl"]:
               assert solution["problem_id"] in problem_ids
               assert solution["solution_locale"] in {"id", "en"}
+              assert solution["verification_status"] == "parsed_unverified"
+              assert not solution.get("errors")
+
+          for solution in loaded["solution.images.jsonl"]:
+              assert solution["problem_id"] in problem_ids
+              assert solution["verification_status"] == "source_crops_reviewed"
+              assert solution["images"]
+              for image in solution["images"]:
+                  assert image["url"].startswith("https://labfisika.com/solutions/")
 
           for relation in loaded["relations.jsonl"]:
               assert relation["from_id"] in problem_ids
